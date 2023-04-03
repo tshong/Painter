@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Fabric.js with Vue2 Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@4.3.0/dist/fabric.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fabric-vue@2.2.0/dist/fabric-vue.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        #toolbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #ddd;
+        }
+
+        #toolbar button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="toolbar">
+        <el-button type="primary" @click="addTextBox">Text</el-button>
+        <el-button type="primary" @click="addLine">Line</el-button>
+        <el-button type="primary" @click="pasteImage">Image</el-button>
+        <el-button type="primary" @click="undo">Undo</el-button>
+        <el-button type="primary" @click="redo">Redo</el-button>
+    </div>
+    <canvas ref="canvas" :width="canvasWidth" :height="canvasHeight"></canvas>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                canvasWidth: 500,
+                canvasHeight: 500,
+                canvas: null,
+                undoStack: [],
+                redoStack: [],
+            };
+        },
+        mounted() {
+            this.canvas = new fabric.Canvas(this.$refs.canvas);
+
+            this.canvas.on('object:added', this.addToUndoStack);
+            this.canvas.on('object:removed', this.addToUndoStack);
+        },
+        methods: {
+            addTextBox() {
+                const textBox = new fabric.IText('Type here', {
+                    left: 50,
+                    top: 50,
+                    fontSize: 20,
+                });
+
+                this.canvas.add(textBox);
+            },
+            addLine() {
+                const line = new fabric.Line([50, 100, 200, 100], {
+                    stroke: 'black',
+                    strokeWidth: 2,
+                });
+
+                this.canvas.add(line);
+            },
+            pasteImage() {
+                fabric.Image.fromURL('data:image/png;base64,iVBORw0KG...', (image) => {
+                    this.canvas.add(image);
+                });
+            },
+            addToUndoStack() {
+                const currentState = JSON.stringify(this.canvas);
+                this.undoStack.push(currentState);
+                this.redoStack = [];
+            },
+            undo() {
+                if (this.undoStack.length > 1) {
+                    const lastState = this.undoStack.pop();
+                    this.redoStack.push(lastState);
+                    this.canvas.loadFromJSON(this.undoStack[this.undoStack.length - 1]);
+                    this.canvas.renderAll();
+                }
+            },
+            redo() {
+                if (this.redoStack.length > 0) {
+                    const nextState = this.redoStack.pop();
+                    this.undoStack.push(nextState);
+                    this.canvas.loadFromJSON(nextState);
+                    this.canvas.renderAll();
+                }
+            },
+        },
+    });
+
+</script>
+</body>
+</html>

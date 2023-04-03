@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vue.js + Fabric.js Example</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/vue@2.6.11/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.3.0/fabric.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <div style="margin: 20px;">
+        <el-button-group>
+            <el-button @click="addText">Text</el-button>
+            <el-button @click="addRectangle">Rectangle</el-button>
+            <el-button @click="addImage">Image</el-button>
+            <el-button @click="addLine">Line</el-button>
+            <el-button @click="undo">Undo</el-button>
+            <el-button @click="redo">Redo</el-button>
+        </el-button-group>
+    </div>
+    <canvas id="canvas"></canvas>
+</div>
+
+<script>
+    var img = document.createElement('img');
+    img.src = "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
+
+    new Vue({
+        el: '#app',
+        data: {
+            canvas: null,
+            undoStack: [],
+            redoStack: [],
+        },
+        methods: {
+            // Initialize canvas
+            initCanvas: function () {
+                this.canvas = new fabric.Canvas('canvas', {
+                    backgroundColor: 'white',
+                    width: window.innerWidth - 40,
+                    height: window.innerHeight - 80,
+                    selectionLineWidth: 2,
+                });
+
+                // Add custom control for deleting objects
+                fabric.Object.prototype.controls.deleteControl = new fabric.Control({
+                    x: 0.5,
+                    y: -0.5,
+                    offsetX: 20,
+                    offsetY: -15,
+                    cursorStyle: 'pointer',
+
+                    // mouseUpHandler: function (eventData, transform) {
+                    //     var target = transform.target;
+                    //     var canvas = target.canvas;
+                    //     canvas.remove(target);
+                    //     canvas.requestRenderAll();
+                    // },
+                    mouseUpHandler: function deleteObject(eventData, transform) {
+                        var target = transform.target;
+                        var canvas = target.canvas;
+                        canvas.remove(target);
+                        canvas.requestRenderAll();
+                    },
+
+                    // render: function(ctx, left, top, styleOverride, fabricObject) {
+                    //     ctx.save();
+                    //     ctx.translate(left, top);
+                    //     ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
+                    //     ctx.drawImage(
+                    //         document.getElementById('deleteIcon'),
+                    //         10,
+                    //         -30,
+                    //         20, // size
+                    //         20
+                    //     );
+                    //     ctx.restore();
+                    // },
+                    render: function renderIcon(ctx, left, top, styleOverride, fabricObject) {
+                        var size = 24;
+                        ctx.save();
+                        ctx.translate(left, top);
+                        ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
+                        ctx.drawImage(img, -size / 2, -size / 2, size, size);
+                        ctx.restore();
+                    },
+
+
+                    cornerSize: 20,
+                });
+            },
+
+            // Add text to canvas
+            addText: function () {
+                var text = new fabric.IText('Text', {
+                    fontFamily: 'Arial',
+                    fontSize: 20,
+                    left: 50,
+                    top: 50,
+                    fill: 'black',
+                    stroke: null,
+                    hasControls: true,
+                    hasBorders: true,
+                    selectable: true,
+                });
+                this.canvas.add(text);
+                this.addToUndoStack('add', text);
+            },
+
+            // Add rectangle to canvas
+            addRectangle: function () {
+                var rect = new fabric.Rect({
+                    width: 100,
+                    height: 100,
+                    left: 50,
+                    top: 50,
+                    fill: 'white',
+                    stroke: 'black',
+                    strokeWidth: 2,
+                    hasControls: true,
+                    hasBorders: true,
+                    selectable: true,
+                });
+                this.canvas.add(rect);
+                this.addToUndoStack('add', rect);
+            },
+            // Add image
+            addImage: function () {
+                var that = this;
+                var url = prompt('Enter image URL', '');
+                if (url) {
+                    fabric.Image.fromURL(url, function (img) {
+                        img.set({
+                            left: 50,
+                            top: 50,
+                            hasControls: true,
+                            hasBorders: true,
+                            selectable: true,
+                        });
+                        that.canvas.add(img);
+                        that.addToUndoStack('add', img);
+                    });
+                }
+            },
+
+            // Add line to canvas
+            addLine: function () {
+                var line = new fabric.Line([50, 50, 200, 200], {
+                    stroke: 'black',
+                    strokeWidth: 2,
+                    hasControls: true,
+                    hasBorders: true,
+                    selectable: true,
+                });
+                this.canvas.add(line);
+                this.addToUndoStack('add', line);
+            },
+
+            // Undo last action
+            undo: function () {
+                if (this.undoStack.length > 0) {
+                    var lastAction = this.undoStack.pop();
+                    var action = lastAction[0];
+                    var object = lastAction[1];
+                    if (action === 'add') {
+                        this.canvas.remove(object);
+                        this.redoStack.push(lastAction);
+                    } else if (action === 'modify') {
+                        this.canvas.remove(object);
+                        this.canvas.add(lastAction[2]);
+                        this.redoStack.push([action, object, lastAction[2]]);
+                    }
+                    this.canvas.renderAll();
+                }
+            },
+
+            // Redo last undone action
+            redo: function () {
+                if (this.redoStack.length > 0) {
+                    var lastAction = this.redoStack.pop();
+                    var action = lastAction[0];
+                    var object = lastAction[1];
+                    if (action === 'add') {
+                        this.canvas.add(object);
+                        this.undoStack.push(lastAction);
+                    } else if (action === 'modify') {
+                        this.canvas.remove(object);
+                        this.canvas.add(lastAction[2]);
+                        this.undoStack.push([action, object, lastAction[2]]);
+                    }
+                    this.canvas.renderAll();
+                }
+            },
+
+            // Add action to undo stack
+            addToUndoStack: function (action, object) {
+                this.undoStack.push([action, object]);
+                this.redoStack = [];
+            },
+        },
+        mounted: function () {
+            this.initCanvas();
+        },
+    });
+</script>
+</body>
+</html>

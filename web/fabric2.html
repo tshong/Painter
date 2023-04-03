@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas App</title>
+    <!-- Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+    <!-- Element UI -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+</head>
+<body>
+<div id="app">
+    <el-button-group>
+        <el-button @click="addText">Text</el-button>
+        <el-button @click="addRectangle">Rectangle</el-button>
+        <el-button @click="addImage">Image</el-button>
+        <el-button @click="undo">Undo</el-button>
+        <el-button @click="redo">Redo</el-button>
+        <el-button @click="addLine">Line</el-button>
+    </el-button-group>
+    <canvas ref="canvas" width="800" height="600"></canvas>
+</div>
+<script>
+
+    new Vue({
+        el: '#app',
+        mounted() {
+            this.canvas = new fabric.Canvas(this.$refs.canvas)
+
+            this.canvas.on('object:modified', () => {
+                this.saveState()
+            })
+
+            this.saveState()
+        },
+        data() {
+            return {
+                canvas: null,
+                undoList: [],
+                redoList: [],
+            }
+        },
+        methods: {
+            addText() {
+                const text = new fabric.IText('Enter text', {
+                    fontFamily: 'Arial',
+                    fontSize: 30,
+                    left: 100,
+                    top: 100,
+                })
+                this.canvas.add(text)
+                this.saveState()
+            },
+            addRectangle() {
+                const rectangle = new fabric.Rect({
+                    width: 200,
+                    height: 100,
+                    left: 100,
+                    top: 100,
+                    fill: 'yellow',
+                })
+                this.canvas.add(rectangle)
+                this.saveState()
+            },
+            addImage() {
+                fabric.Image.fromURL('https://picsum.photos/200/300', (image) => {
+                    this.canvas.add(image)
+                    this.saveState()
+                })
+            },
+            // addLine() {
+            //     const line = new fabric.Line([50, 50, 200, 200], {
+            //         stroke: 'red',
+            //         strokeWidth: 5,
+            //         selectable: true,
+            //         hasControls: true,
+            //         hasBorders: true,
+            //         lockMovementX: false,
+            //         lockMovementY: false,
+            //         lockRotation: false,
+            //         lockScalingX: false,
+            //         lockScalingY: false,
+            //         lockUniScaling: false,
+            //     })
+            //     this.canvas.add(line)
+            //     this.saveState()
+            // },
+
+            addLine() {
+                const line = new fabric.Line([50, 50, 200, 200], {
+                    stroke: 'red',
+                    strokeWidth: 5,
+                    selectable: true,
+                    hasControls: true,
+                    hasBorders: true,
+                    lockMovementX: false,
+                    lockMovementY: false,
+                    lockRotation: false,
+                    lockScalingX: false,
+                    lockScalingY: false,
+                    lockUniScaling: false,
+                });
+
+                let draggingStart = false;
+                let draggingEnd = false;
+
+                line.on('mousedown', (e) => {
+                    if (e.target === line) {
+                        const pointer = this.canvas.getPointer(e.e);
+                        const x = pointer.x;
+                        const y = pointer.y;
+                        const startX = line.x1;
+                        const startY = line.y1;
+                        const endX = line.x2;
+                        const endY = line.y2;
+
+                        if (Math.abs(startX - x) < 10 && Math.abs(startY - y) < 10) {
+                            draggingStart = true;
+                        } else if (Math.abs(endX - x) < 10 && Math.abs(endY - y) < 10) {
+                            draggingEnd = true;
+                        }
+                    }
+                });
+
+                line.on('mouseup', (e) => {
+                    draggingStart = false;
+                    draggingEnd = false;
+                });
+
+                this.canvas.on('mouse:move', (e) => {
+                    if (draggingStart) {
+                        const pointer = this.canvas.getPointer(e.e);
+                        const x = pointer.x;
+                        const y = pointer.y;
+                        line.set({ x1: x, y1: y });
+                        line.setCoords();
+                        this.canvas.renderAll();
+                    } else if (draggingEnd) {
+                        const pointer = this.canvas.getPointer(e.e);
+                        const x = pointer.x;
+                        const y = pointer.y;
+                        line.set({ x2: x, y2: y });
+                        line.setCoords();
+                        this.canvas.renderAll();
+                    }
+                });
+
+                this.canvas.add(line);
+                this.saveState();
+            },
+
+            undo() {
+                const prevState = this.undoList.pop()
+                if (prevState) {
+                    this.redoList.push(this.canvas.toDatalessJSON(['id']))
+                    this.canvas.loadFromJSON(prevState)
+                }
+            },
+            redo() {
+                const nextState = this.redoList.pop()
+                if (nextState) {
+                    this.undoList.push(this.canvas.toDatalessJSON(['id']))
+                    this.canvas.loadFromJSON(nextState)
+                }
+            },
+            saveState() {
+                this.undoList.push(this.canvas.toDatalessJSON(['id']))
+                this.redoList = []
+            },
+        },
+    })
+</script>
+
+</body>
+</html>
