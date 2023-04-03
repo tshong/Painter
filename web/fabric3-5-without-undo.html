@@ -20,9 +20,8 @@
 <div id="app">
     <div style="margin: 20px;">
         <el-button-group>
+<!--            <el-button @click="addImage">Image</el-button>-->
             <el-button @click="addText">Text</el-button>
-            <el-button @click="addRectangle">Rectangle</el-button>
-            <el-button @click="addImage">Image</el-button>
             <el-button @click="addLine">Line</el-button>
         </el-button-group>
     </div>
@@ -51,7 +50,7 @@
         </el-table-column>
     </el-table>
 
-    <el-dialog :visible.sync="dialogVisible" title="Modal Title" :style="{top: top + 'px', left: left + 'px'}">
+    <el-dialog :visible.sync="dialogVisible" title="設定量測尺寸" :style="{top: top + 'px', left: left + 'px'}">
         <el-form ref="myForm" :model="form" label-width="120px">
             <el-form-item label="ID" prop="dimId">
                 <el-input v-model="form.dimId"></el-input>
@@ -64,9 +63,8 @@
             </el-form-item>
         </el-form>
         <div slot="footer">
-            <el-button @click="dialogVisible = false">Cancel</el-button>
-            <el-button type="primary" @click="submitForm">Submit</el-button>
-            <el-button @click="resetForm">Reset</el-button>
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitForm">確定</el-button>
         </div>
     </el-dialog>
 
@@ -78,7 +76,28 @@
 
 
     document.addEventListener('paste', handlePaste);
-    var canPasteImage = false
+    var canPasteImage = true
+
+    function inference(input) {
+        const ptn = /([A-Z]+)$/;
+        const charMatch = input.match(ptn) ;
+        if (charMatch !== null) {
+            return input.replace(ptn, String.fromCharCode(charMatch[1].charCodeAt(0)+1))
+        }
+
+        const pattern = /(\d+)$/;
+        let output = '';
+
+        const matches = input.match(pattern);
+        if (matches !== null) {
+            const num = parseInt(matches[1]);
+            output = input.replace(pattern, num + 1);
+        } else {
+            output = 'No number found in input';
+        }
+
+        return output;
+    }
 
     function handlePaste(event) {
         if (canPasteImage === false) {
@@ -162,7 +181,7 @@
             canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
         }
     }
-    var textId = 0
+    var uuid = 1
 
     new Vue({
         el: '#app',
@@ -172,11 +191,10 @@
                 top:0,
                 left:0,
                 dialogVisible:false,
-                undoStack: [],
-                redoStack: [],
                 tableData: [
                 ],
                 form: {
+                    id:0,
                     dimId: '',
                     designDim: '',
                     tolerance: '',
@@ -224,8 +242,6 @@
                         ctx.drawImage(img, -size / 2, -size / 2, size, size);
                         ctx.restore();
                     },
-
-
                     cornerSize: 20,
                 });
                 this.canvas.on('object:moving', function (e) {
@@ -253,7 +269,11 @@
             ,
             // Add text to canvas
             addText: function () {
-                var text = new fabric.IText('Text', {
+                let defaultText = 'A'
+                if (this.selectingText !== null) {
+                    defaultText = inference(this.selectingText.formData.dimId);
+                }
+                var text = new fabric.IText(defaultText, {
                     fontFamily: 'Arial',
                     fontSize: 25,
                     left: 50,
@@ -266,6 +286,7 @@
                     zIndex:100
                 });
                 text.formData = {
+                    id:uuid++,
                     dimId:text.text,
                     tolerance:'±10%',
                     designDim:'',
@@ -283,27 +304,7 @@
                     }
                     this.selectingText = text
                 })
-            }
-            ,
-
-            // Add rectangle to canvas
-            addRectangle: function () {
-                var rect = new fabric.Rect({
-                    width: 100,
-                    height: 100,
-                    left: 50,
-                    top: 50,
-                    fill: 'white',
-                    stroke: 'black',
-                    strokeWidth: 2,
-                    hasControls: true,
-                    hasBorders: true,
-                    selectable: true,
-                });
-                this.canvas.add(rect);
-                this.addToUndoStack('add', rect);
-            }
-            ,
+            },
             // Add image
             addImage: function () {
                 canPasteImage = !canPasteImage
@@ -326,9 +327,7 @@
                 // }
 
 
-            }
-            ,
-
+            }  ,
             // Add line to canvas
             addLine: function () {
                 var line = new fabric.Line([50, 50, 200, 200], {
@@ -336,7 +335,7 @@
                     strokeWidth: 2,
                     selectable: true,
                     evented: true,
-                    hasControls: false,
+                    hasControls: true,
                     x1: 50,
                     y1: 50,
                     x2: 200,
@@ -358,7 +357,7 @@
                     this.selectingText.formData[p] = this.form[p]
                 }
                 this.selectingText.text = this.form['dimId']
-                let dimObj = this.tableData.find( obj => obj.dimId === this.form['dimId'] )
+                let dimObj = this.tableData.find( obj => obj.id === this.form['id'] )
                 if (dimObj) {
                     for(let p in this.form) {
                         dimObj[p] = this.form[p]
@@ -370,16 +369,18 @@
                     }
                     this.tableData.push(dimObj)
                 }
-
-                this.$refs.myForm.validate(valid => {
-                    if (valid) {
-                        console.log('Form submitted successfully.');
-                        this.dialogVisible = false;
-                    } else {
-                        console.log('Form validation failed.');
-                        return false;
-                    }
-                });
+                this.canvas.requestRenderAll();
+                this.canvas.discardActiveObject()
+                this.dialogVisible = false;
+                // this.$refs.myForm.validate(valid => {
+                //     if (valid) {
+                //         console.log('Form submitted successfully.');
+                //         this.dialogVisible = false;
+                //     } else {
+                //         console.log('Form validation failed.');
+                //         return false;
+                //     }
+                // });
             },
             resetForm() {
                 this.$refs.myForm.resetFields();

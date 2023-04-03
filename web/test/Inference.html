@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+    function inference(input) {
+        const ptn = /([A-Z]+)$/;
+        const charMatch = input.match(ptn) ;
+        if (charMatch !== null) {
+           return input.replace(ptn, String.fromCharCode(charMatch[1].charCodeAt(0)+1))
+        }
+
+        const pattern = /(\d+)$/;
+        let output = '';
+
+        const matches = input.match(pattern);
+        if (matches !== null) {
+            const num = parseInt(matches[1]);
+            output = input.replace(pattern, num + 1);
+        } else {
+            output = 'No number found in input';
+        }
+
+        return output;
+    }
+
+    console.log(inference('A'));  // 輸出 'No number found in input'
+    console.log(inference('LG-A'));  // 輸出 'No number found in input'
+    console.log(inference('A-1'));  // 輸出 'A-2'
+    console.log(inference('LG-1'));  // 輸出 'LG-C'
+    console.log(inference('LG-A'));  // 輸出 'LG-C'
+</script>
+</body>
+</html>
