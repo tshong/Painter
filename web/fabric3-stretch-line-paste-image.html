@@ -34,7 +34,7 @@
 <script>
     document.addEventListener('paste', handlePaste);
     var canPasteImage = false
-    var globalCanvas = null
+    var canvas = null
     function handlePaste(event) {
         if (canPasteImage===false) {
             return
@@ -54,7 +54,7 @@
                             top:550,
                             left:550
                         })
-                        globalCanvas.add(fabricImg);
+                        canvas.add(fabricImg);
                     };
                     img.src = event.target.result;
                 };
@@ -102,7 +102,7 @@
                     selectionLineWidth: 2,
                 });
                 this.canvas = canvas
-                globalCanvas = canvas
+                canvas = canvas
                 fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
                 // Add custom control for deleting objects
                 fabric.Object.prototype.controls.deleteControl = new fabric.Control({

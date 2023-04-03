@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.3.0/fabric.min.js"></script>
     <style>
         #canvas {
-            border-color:black;
+            border-color: black;
             border-style: solid;
             border-width: 2px;
         }
@@ -24,11 +24,52 @@
             <el-button @click="addRectangle">Rectangle</el-button>
             <el-button @click="addImage">Image</el-button>
             <el-button @click="addLine">Line</el-button>
-            <el-button @click="undo">Undo</el-button>
-            <el-button @click="redo">Redo</el-button>
         </el-button-group>
     </div>
     <canvas id="canvas"></canvas>
+
+    <el-table :data="tableData">
+        <el-table-column prop="dimId" label="Symbol">
+            <template slot-scope="{ row }">
+                <el-input v-model="row.dimId"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column prop="designDim" label="Design">
+            <template slot-scope="{ row }">
+                <el-input v-model="row.designDim"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column prop="tolerance" label="Tolerance">
+            <template slot-scope="{ row }">
+                <el-input v-model="row.tolerance"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column prop="actual" label="Actual">
+            <template slot-scope="{ row }">
+                <el-input v-model="row.actual"></el-input>
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <el-dialog :visible.sync="dialogVisible" title="Modal Title" :style="{top: top + 'px', left: left + 'px'}">
+        <el-form ref="myForm" :model="form" label-width="120px">
+            <el-form-item label="ID" prop="dimId">
+                <el-input v-model="form.dimId"></el-input>
+            </el-form-item>
+            <el-form-item label="Design" prop="designDim">
+                <el-input v-model="form.designDim"></el-input>
+            </el-form-item>
+            <el-form-item label="Tolerance" prop="tolerance">
+                <el-input v-model="form.tolerance" ></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="dialogVisible = false">Cancel</el-button>
+            <el-button type="primary" @click="submitForm">Submit</el-button>
+            <el-button @click="resetForm">Reset</el-button>
+        </div>
+    </el-dialog>
+
 </div>
 
 <script>
@@ -38,8 +79,9 @@
 
     document.addEventListener('paste', handlePaste);
     var canPasteImage = false
+
     function handlePaste(event) {
-        if (canPasteImage===false) {
+        if (canPasteImage === false) {
             return
         }
         const items = (event.clipboardData || event.originalEvent.clipboardData).items;
@@ -48,17 +90,15 @@
                 // Get the image data from the clipboard
                 const blob = item.getAsFile();
                 const reader = new FileReader();
-                reader.onload = function(event) {
+                reader.onload = function (event) {
                     // Create an image object and add it to the canvas
                     const img = new Image();
-                    img.onload = function() {
+                    img.onload = function () {
                         const fabricImg = new fabric.Image(img);
                         fabricImg.set({
-                            top:550,
-                            left:550,
-                            zIndex:0,
-                            lockRotation:true,
-                            hasControls:false
+                            top: 550,
+                            left: 550,
+                            zIndex: 0
                         })
                         canvas.add(fabricImg);
                     };
@@ -79,8 +119,7 @@
             strokeWidth: 3,
             radius: 8,
             fill: '#fff',
-            stroke: 'green',
-            zIndex: 20
+            stroke: 'green'
         });
         c.hasControls = c.hasBorders = false;
 
@@ -92,12 +131,59 @@
         return c;
     }
 
+
+    // Create an array to store the history of canvas states
+    var canvasStateHistory = [];
+    var currentStateIndex = -1;
+
+    // Add a function to save the current state of the canvas
+    function saveCanvasState() {
+
+        // Remove any future states that exist in the history array
+        canvasStateHistory.splice(currentStateIndex + 1);
+
+        // Add the current state to the history array
+        currentStateIndex++;
+        canvasStateHistory.push(JSON.stringify(canvas));
+    }
+
+    // Add a function to undo the last action on the canvas
+    function undoCanvas() {
+        if (currentStateIndex > 0) {
+            currentStateIndex--;
+            canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
+        }
+    }
+
+    // Add a function to redo the last undone action on the canvas
+    function redoCanvas() {
+        if (currentStateIndex < canvasStateHistory.length - 1) {
+            currentStateIndex++;
+            canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
+        }
+    }
+    var textId = 0
+
     new Vue({
         el: '#app',
-        data: {
-            canvas: null,
-            undoStack: [],
-            redoStack: [],
+        data() {
+            return {
+                canvas: null,
+                top:0,
+                left:0,
+                dialogVisible:false,
+                undoStack: [],
+                redoStack: [],
+                tableData: [
+                ],
+                form: {
+                    dimId: '',
+                    designDim: '',
+                    tolerance: '',
+                    actual:''
+                },
+                selectingText:null,
+            }
         },
         methods: {
             // Initialize canvas
@@ -105,7 +191,7 @@
                 this.canvas = new fabric.Canvas('canvas', {
                     backgroundColor: 'white',
                     width: window.innerWidth - 40,
-                    height: window.innerHeight - 80,
+                    height: window.innerHeight - 380,
                     selectionLineWidth: 2,
                 });
                 canvas = this.canvas
@@ -122,9 +208,11 @@
                         var target = transform.target;
                         var canvas = target.canvas;
                         canvas.remove(target);
-                        target._objects.forEach((obj)=>{
-                            canvas.remove(obj)
-                        })
+                        if (target._objects) {
+                            target._objects.forEach((obj) => {
+                                canvas.remove(obj)
+                            });
+                        }
                         canvas.requestRenderAll();
                     },
 
@@ -140,21 +228,29 @@
 
                     cornerSize: 20,
                 });
-                this.canvas.on('object:moving', function(e) {
-                    console.log('object:moving', e.target)
+                this.canvas.on('object:moving', function (e) {
                     var p = e.target;
                     if (p.line1 || p.line2) {
-                        p.line1 && p.line1.set({ 'x2': p.left, 'y2': p.top });
-                        p.line2 && p.line2.set({ 'x1': p.left, 'y1': p.top });
+                        p.line1 && p.line1.set({'x2': p.left, 'y2': p.top});
+                        p.line2 && p.line2.set({'x1': p.left, 'y1': p.top});
                         canvas.renderAll();
                     }
                 });
 
-                this.canvas.on('selection:updated', function(e) {
-                    var selectedObject = canvas.getActiveObject();
-                    selectedObject.sendToBack();
+                this.canvas.on('object:added', saveCanvasState);
+                this.canvas.on('object:modified', (p1, p2)=>{
+                    if (p1.target.text) {
+                        let text = p1.target.text.replace(/\s*,.+$/,'')
+                        let dim = p1.target.text.replace(/^.+,\s*/,'')
+
+                        console.log('p1.target.text:', p1.target.text);
+
+                    }
                 });
-            },
+                this.canvas.on('object:removed', saveCanvasState);
+
+            }
+            ,
             // Add text to canvas
             addText: function () {
                 var text = new fabric.IText('Text', {
@@ -164,14 +260,31 @@
                     top: 50,
                     fill: 'green',
                     stroke: null,
-                    zIndex: 10,
                     hasControls: true,
                     hasBorders: true,
                     selectable: true,
+                    zIndex:100
                 });
+                text.formData = {
+                    dimId:text.text,
+                    tolerance:'±10%',
+                    designDim:'',
+                    actual:''
+                }
                 this.canvas.add(text);
-                this.addToUndoStack('add', text);
-            },
+                text.on('editing:entered', (evt)=>{
+                    console.log('editing:entered', text)
+                    this.dialogVisible=true
+                    this.left = text.left-200
+                    this.top = text.top-200
+                    console.log('text.formData', text.formData)
+                    for (let prop in text.formData ) {
+                        this.form[prop] = text.formData[prop]
+                    }
+                    this.selectingText = text
+                })
+            }
+            ,
 
             // Add rectangle to canvas
             addRectangle: function () {
@@ -189,7 +302,8 @@
                 });
                 this.canvas.add(rect);
                 this.addToUndoStack('add', rect);
-            },
+            }
+            ,
             // Add image
             addImage: function () {
                 canPasteImage = !canPasteImage
@@ -212,7 +326,8 @@
                 // }
 
 
-            },
+            }
+            ,
 
             // Add line to canvas
             addLine: function () {
@@ -226,7 +341,6 @@
                     y1: 50,
                     x2: 200,
                     y2: 200,
-                    zIndex: 10,
                     perPixelTargetFind: true,
                     strokeLineCap: 'round'
                 });
@@ -239,28 +353,45 @@
                 )
                 // this.addToUndoStack('add', [line, circle1, circle2]);
             },
+            submitForm() {
+                for(let p in this.form) {
+                    this.selectingText.formData[p] = this.form[p]
+                }
+                this.selectingText.text = this.form['dimId']
+                let dimObj = this.tableData.find( obj => obj.dimId === this.form['dimId'] )
+                if (dimObj) {
+                    for(let p in this.form) {
+                        dimObj[p] = this.form[p]
+                    }
+                } else {
+                    dimObj = {}
+                    for(let p in this.form) {
+                        dimObj[p] = this.form[p]
+                    }
+                    this.tableData.push(dimObj)
+                }
 
-            // Undo last action
-            undo: function () {
-                undoCanvas()
-
+                this.$refs.myForm.validate(valid => {
+                    if (valid) {
+                        console.log('Form submitted successfully.');
+                        this.dialogVisible = false;
+                    } else {
+                        console.log('Form validation failed.');
+                        return false;
+                    }
+                });
             },
-
-            // Redo last undone action
-            redo: function () {
-                redoCanvas()
-            },
-
-            // Add action to undo stack
-            addToUndoStack: function (action, object) {
-                this.undoStack.push([action, object]);
-                this.redoStack = [];
-            },
-        },
+            resetForm() {
+                this.$refs.myForm.resetFields();
+            }
+        }
+        ,
         mounted: function () {
             this.initCanvas();
-        },
-    });
+        }
+        ,
+    })
+    ;
 </script>
 </body>
 </html>
