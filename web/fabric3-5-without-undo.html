@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Vue.js + Fabric.js Example</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <script src="https://unpkg.com/vue@2.6.11/dist/vue.js"></script>
-    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/element-ui/2.15.13/index.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.3.0/fabric.min.js"></script>
     <style>
         #canvas {
@@ -16,383 +17,386 @@
         }
     </style>
 </head>
+
 <body>
-<div id="app">
-    <div style="margin: 20px;">
-        <el-button-group>
-<!--            <el-button @click="addImage">Image</el-button>-->
-            <el-button @click="addText">Text</el-button>
-            <el-button @click="addLine">Line</el-button>
-        </el-button-group>
-    </div>
-    <canvas id="canvas"></canvas>
-
-    <el-table :data="tableData">
-        <el-table-column prop="dimId" label="Symbol">
-            <template slot-scope="{ row }">
-                <el-input v-model="row.dimId"></el-input>
-            </template>
-        </el-table-column>
-        <el-table-column prop="designDim" label="Design">
-            <template slot-scope="{ row }">
-                <el-input v-model="row.designDim"></el-input>
-            </template>
-        </el-table-column>
-        <el-table-column prop="tolerance" label="Tolerance">
-            <template slot-scope="{ row }">
-                <el-input v-model="row.tolerance"></el-input>
-            </template>
-        </el-table-column>
-        <el-table-column prop="actual" label="Actual">
-            <template slot-scope="{ row }">
-                <el-input v-model="row.actual"></el-input>
-            </template>
-        </el-table-column>
-    </el-table>
-
-    <el-dialog :visible.sync="dialogVisible" title="設定量測尺寸" :style="{top: top + 'px', left: left + 'px'}">
-        <el-form ref="myForm" :model="form" label-width="120px">
-            <el-form-item label="ID" prop="dimId">
-                <el-input v-model="form.dimId"></el-input>
-            </el-form-item>
-            <el-form-item label="Design" prop="designDim">
-                <el-input v-model="form.designDim"></el-input>
-            </el-form-item>
-            <el-form-item label="Tolerance" prop="tolerance">
-                <el-input v-model="form.tolerance" ></el-input>
-            </el-form-item>
-        </el-form>
-        <div slot="footer">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="submitForm">確定</el-button>
+    <div id="app">
+        <h1>設備品檢作業</h1>
+        <div style="margin: 20px;">
+            <el-button-group>
+                <!--            <el-button @click="addImage">Image</el-button>-->
+                <el-button @click="addText">Text</el-button>
+                <el-button @click="addLine">Line</el-button>
+            </el-button-group>
         </div>
-    </el-dialog>
+        <canvas id="canvas"></canvas>
 
-</div>
+        <el-table :data="tableData">
+            <el-table-column prop="dimId" label="Symbol">
+                <template slot-scope="{ row }">
+                    <el-input v-model="row.dimId"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="designDim" label="Design">
+                <template slot-scope="{ row }">
+                    <el-input v-model="row.designDim"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="tolerance" label="Tolerance">
+                <template slot-scope="{ row }">
+                    <el-input v-model="row.tolerance"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="actual" label="Actual">
+                <template slot-scope="{ row }">
+                    <el-input v-model="row.actual"></el-input>
+                </template>
+            </el-table-column>
+        </el-table>
 
-<script>
+        <el-dialog :visible.sync="dialogVisible" title="設定量測尺寸" :style="{top: top + 'px', left: left + 'px'}">
+            <el-form ref="myForm" :model="form" label-width="120px">
+                <el-form-item label="ID" prop="dimId">
+                    <el-input v-model="form.dimId"></el-input>
+                </el-form-item>
+                <el-form-item label="Design" prop="designDim">
+                    <el-input v-model="form.designDim"></el-input>
+                </el-form-item>
+                <el-form-item label="Tolerance" prop="tolerance">
+                    <el-input v-model="form.tolerance"></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer">
+                <el-button @click="dialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="submitForm">確定</el-button>
+            </div>
+        </el-dialog>
 
-    let canvas = null
+    </div>
+
+    <script>
+
+        let canvas = null
 
 
-    document.addEventListener('paste', handlePaste);
-    var canPasteImage = true
+        document.addEventListener('paste', handlePaste);
+        var canPasteImage = true
 
-    function inference(input) {
-        const ptn = /([A-Z]+)$/;
-        const charMatch = input.match(ptn) ;
-        if (charMatch !== null) {
-            return input.replace(ptn, String.fromCharCode(charMatch[1].charCodeAt(0)+1))
+        function inference(input) {
+            const ptn = /([A-Z]+)$/;
+            const charMatch = input.match(ptn);
+            if (charMatch !== null) {
+                return input.replace(ptn, String.fromCharCode(charMatch[1].charCodeAt(0) + 1))
+            }
+
+            const pattern = /(\d+)$/;
+            let output = '';
+
+            const matches = input.match(pattern);
+            if (matches !== null) {
+                const num = parseInt(matches[1]);
+                output = input.replace(pattern, num + 1);
+            } else {
+                output = 'No number found in input';
+            }
+
+            return output;
         }
 
-        const pattern = /(\d+)$/;
-        let output = '';
-
-        const matches = input.match(pattern);
-        if (matches !== null) {
-            const num = parseInt(matches[1]);
-            output = input.replace(pattern, num + 1);
-        } else {
-            output = 'No number found in input';
-        }
-
-        return output;
-    }
-
-    function handlePaste(event) {
-        if (canPasteImage === false) {
-            return
-        }
-        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
-        for (const item of items) {
-            if (item.type.indexOf('image') === 0) {
-                // Get the image data from the clipboard
-                const blob = item.getAsFile();
-                const reader = new FileReader();
-                reader.onload = function (event) {
-                    // Create an image object and add it to the canvas
-                    const img = new Image();
-                    img.onload = function () {
-                        const fabricImg = new fabric.Image(img);
-                        fabricImg.set({
-                            top: 550,
-                            left: 550,
-                            zIndex: 0
-                        })
-                        canvas.add(fabricImg);
+        function handlePaste(event) {
+            if (canPasteImage === false) {
+                return
+            }
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.type.indexOf('image') === 0) {
+                    // Get the image data from the clipboard
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        // Create an image object and add it to the canvas
+                        const img = new Image();
+                        img.onload = function () {
+                            const fabricImg = new fabric.Image(img);
+                            fabricImg.set({
+                                top: 550,
+                                left: 550,
+                                zIndex: 0
+                            })
+                            canvas.add(fabricImg);
+                        };
+                        img.src = event.target.result;
                     };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(blob);
+                    reader.readAsDataURL(blob);
+                }
             }
         }
-    }
 
-    var img = document.createElement('img');
-    img.src = "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
+        var img = document.createElement('img');
+        img.src = "data:image/svg+xml,%3C%3Fxml version='1.0' encoding='utf-8'%3F%3E%3C!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3E%3Csvg version='1.1' id='Ebene_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xml:space='preserve'%3E%3Ccircle style='fill:%23F44336;' cx='299.76' cy='439.067' r='218.516'/%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18'/%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179'/%3E%3C/g%3E%3C/svg%3E";
 
-    function makeCircle(left, top, line1, line2, line3, line4) {
-        var c = new fabric.Circle({
-            left: left,
-            top: top,
-            strokeWidth: 3,
-            radius: 8,
-            fill: '#fff',
-            stroke: 'green'
-        });
-        c.hasControls = c.hasBorders = false;
+        function makeCircle(left, top, line1, line2, line3, line4) {
+            var c = new fabric.Circle({
+                left: left,
+                top: top,
+                strokeWidth: 3,
+                radius: 8,
+                fill: '#fff',
+                stroke: 'green'
+            });
+            c.hasControls = c.hasBorders = false;
 
-        c.line1 = line1;
-        c.line2 = line2;
-        c.line3 = line3;
-        c.line4 = line4;
+            c.line1 = line1;
+            c.line2 = line2;
+            c.line3 = line3;
+            c.line4 = line4;
 
-        return c;
-    }
-
-
-    // Create an array to store the history of canvas states
-    var canvasStateHistory = [];
-    var currentStateIndex = -1;
-
-    // Add a function to save the current state of the canvas
-    function saveCanvasState() {
-
-        // Remove any future states that exist in the history array
-        canvasStateHistory.splice(currentStateIndex + 1);
-
-        // Add the current state to the history array
-        currentStateIndex++;
-        canvasStateHistory.push(JSON.stringify(canvas));
-    }
-
-    // Add a function to undo the last action on the canvas
-    function undoCanvas() {
-        if (currentStateIndex > 0) {
-            currentStateIndex--;
-            canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
+            return c;
         }
-    }
 
-    // Add a function to redo the last undone action on the canvas
-    function redoCanvas() {
-        if (currentStateIndex < canvasStateHistory.length - 1) {
+
+        // Create an array to store the history of canvas states
+        var canvasStateHistory = [];
+        var currentStateIndex = -1;
+
+        // Add a function to save the current state of the canvas
+        function saveCanvasState() {
+
+            // Remove any future states that exist in the history array
+            canvasStateHistory.splice(currentStateIndex + 1);
+
+            // Add the current state to the history array
             currentStateIndex++;
-            canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
+            canvasStateHistory.push(JSON.stringify(canvas));
         }
-    }
-    var uuid = 1
 
-    new Vue({
-        el: '#app',
-        data() {
-            return {
-                canvas: null,
-                top:0,
-                left:0,
-                dialogVisible:false,
-                tableData: [
-                ],
-                form: {
-                    id:0,
-                    dimId: '',
-                    designDim: '',
-                    tolerance: '',
-                    actual:''
-                },
-                selectingText:null,
+        // Add a function to undo the last action on the canvas
+        function undoCanvas() {
+            if (currentStateIndex > 0) {
+                currentStateIndex--;
+                canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
             }
-        },
-        methods: {
-            // Initialize canvas
-            initCanvas: function () {
-                this.canvas = new fabric.Canvas('canvas', {
-                    backgroundColor: 'white',
-                    width: window.innerWidth - 40,
-                    height: window.innerHeight - 380,
-                    selectionLineWidth: 2,
-                });
-                canvas = this.canvas
-                fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
-                // Add custom control for deleting objects
-                fabric.Object.prototype.controls.deleteControl = new fabric.Control({
-                    x: 0.5,
-                    y: -0.5,
-                    offsetX: 20,
-                    offsetY: -15,
-                    cursorStyle: 'pointer',
+        }
 
-                    mouseUpHandler: function deleteObject(eventData, transform) {
-                        var target = transform.target;
-                        var canvas = target.canvas;
-                        canvas.remove(target);
-                        if (target._objects) {
-                            target._objects.forEach((obj) => {
-                                canvas.remove(obj)
-                            });
+        // Add a function to redo the last undone action on the canvas
+        function redoCanvas() {
+            if (currentStateIndex < canvasStateHistory.length - 1) {
+                currentStateIndex++;
+                canvas.loadFromJSON(canvasStateHistory[currentStateIndex], canvas.renderAll.bind(canvas));
+            }
+        }
+        var uuid = 1
+
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    canvas: null,
+                    top: 0,
+                    left: 0,
+                    dialogVisible: false,
+                    tableData: [
+                    ],
+                    form: {
+                        id: 0,
+                        dimId: '',
+                        designDim: '',
+                        tolerance: '',
+                        actual: ''
+                    },
+                    selectingText: null,
+                }
+            },
+            methods: {
+                // Initialize canvas
+                initCanvas: function () {
+                    this.canvas = new fabric.Canvas('canvas', {
+                        backgroundColor: 'white',
+                        width: window.innerWidth - 40,
+                        height: window.innerHeight - 380,
+                        selectionLineWidth: 2,
+                    });
+                    canvas = this.canvas
+                    fabric.Object.prototype.originX = fabric.Object.prototype.originY = 'center';
+                    // Add custom control for deleting objects
+                    fabric.Object.prototype.controls.deleteControl = new fabric.Control({
+                        x: 0.5,
+                        y: -0.5,
+                        offsetX: 20,
+                        offsetY: -15,
+                        cursorStyle: 'pointer',
+
+                        mouseUpHandler: function deleteObject(eventData, transform) {
+                            var target = transform.target;
+                            var canvas = target.canvas;
+                            canvas.remove(target);
+                            if (target._objects) {
+                                target._objects.forEach((obj) => {
+                                    canvas.remove(obj)
+                                });
+                            }
+                            canvas.requestRenderAll();
+                        },
+
+                        render: function renderIcon(ctx, left, top, styleOverride, fabricObject) {
+                            var size = 24;
+                            ctx.save();
+                            ctx.translate(left, top);
+                            ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
+                            ctx.drawImage(img, -size / 2, -size / 2, size, size);
+                            ctx.restore();
+                        },
+                        cornerSize: 20,
+                    });
+                    this.canvas.on('object:moving', function (e) {
+                        var p = e.target;
+                        if (p.line1 || p.line2) {
+                            p.line1 && p.line1.set({ 'x2': p.left, 'y2': p.top });
+                            p.line2 && p.line2.set({ 'x1': p.left, 'y1': p.top });
+                            canvas.renderAll();
                         }
-                        canvas.requestRenderAll();
-                    },
+                    });
 
-                    render: function renderIcon(ctx, left, top, styleOverride, fabricObject) {
-                        var size = 24;
-                        ctx.save();
-                        ctx.translate(left, top);
-                        ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
-                        ctx.drawImage(img, -size / 2, -size / 2, size, size);
-                        ctx.restore();
-                    },
-                    cornerSize: 20,
-                });
-                this.canvas.on('object:moving', function (e) {
-                    var p = e.target;
-                    if (p.line1 || p.line2) {
-                        p.line1 && p.line1.set({'x2': p.left, 'y2': p.top});
-                        p.line2 && p.line2.set({'x1': p.left, 'y1': p.top});
-                        canvas.renderAll();
+                    this.canvas.on('object:added', saveCanvasState);
+                    this.canvas.on('object:modified', (p1, p2) => {
+                        if (p1.target.text) {
+                            let text = p1.target.text.replace(/\s*,.+$/, '')
+                            let dim = p1.target.text.replace(/^.+,\s*/, '')
+
+                            console.log('p1.target.text:', p1.target.text);
+
+                        }
+                    });
+                    this.canvas.on('object:removed', saveCanvasState);
+
+                }
+                ,
+                // Add text to canvas
+                addText: function () {
+                    let defaultText = 'A'
+                    if (this.selectingText !== null) {
+                        defaultText = inference(this.selectingText.formData.dimId);
                     }
-                });
-
-                this.canvas.on('object:added', saveCanvasState);
-                this.canvas.on('object:modified', (p1, p2)=>{
-                    if (p1.target.text) {
-                        let text = p1.target.text.replace(/\s*,.+$/,'')
-                        let dim = p1.target.text.replace(/^.+,\s*/,'')
-
-                        console.log('p1.target.text:', p1.target.text);
-
+                    var text = new fabric.IText(defaultText, {
+                        fontFamily: 'Arial',
+                        fontSize: 25,
+                        left: 50,
+                        top: 50,
+                        fill: 'green',
+                        stroke: null,
+                        hasControls: true,
+                        hasBorders: true,
+                        selectable: true,
+                        zIndex: 100
+                    });
+                    text.formData = {
+                        id: uuid++,
+                        dimId: text.text,
+                        tolerance: '±10%',
+                        designDim: '',
+                        actual: ''
                     }
-                });
-                this.canvas.on('object:removed', saveCanvasState);
+                    this.canvas.add(text);
+                    text.on('editing:entered', (evt) => {
+                        console.log('editing:entered', text)
+                        this.dialogVisible = true
+                        this.left = text.left - 200
+                        this.top = text.top - 200
+                        console.log('text.formData', text.formData)
+                        for (let prop in text.formData) {
+                            this.form[prop] = text.formData[prop]
+                        }
+                        this.selectingText = text
+                    })
+                },
+                // Add image
+                addImage: function () {
+                    canPasteImage = !canPasteImage
 
+                    //
+                    // var that = this;
+                    // var url = prompt('Enter image URL', '');
+                    // if (url) {
+                    //     fabric.Image.fromURL(url, function (img) {
+                    //         img.set({
+                    //             left: 50,
+                    //             top: 50,
+                    //             hasControls: true,
+                    //             hasBorders: true,
+                    //             selectable: true,
+                    //         });
+                    //         that.canvas.add(img);
+                    //         that.addToUndoStack('add', img);
+                    //     });
+                    // }
+
+
+                },
+                // Add line to canvas
+                addLine: function () {
+                    var line = new fabric.Line([50, 50, 200, 200], {
+                        stroke: 'green',
+                        strokeWidth: 2,
+                        selectable: true,
+                        evented: true,
+                        hasControls: true,
+                        x1: 50,
+                        y1: 50,
+                        x2: 200,
+                        y2: 200,
+                        perPixelTargetFind: true,
+                        strokeLineCap: 'round'
+                    });
+                    this.canvas.add(line);
+                    let circle1 = makeCircle(line.get('x1'), line.get('y1'), null, line)
+                    let circle2 = makeCircle(line.get('x2'), line.get('y2'), line)
+                    this.canvas.add(
+                        circle1,
+                        circle2,
+                    )
+                    // this.addToUndoStack('add', [line, circle1, circle2]);
+                },
+                submitForm() {
+                    for (let p in this.form) {
+                        this.selectingText.formData[p] = this.form[p]
+                    }
+                    this.selectingText.text = this.form['dimId']
+                    let dimObj = this.tableData.find(obj => obj.id === this.form['id'])
+                    if (dimObj) {
+                        for (let p in this.form) {
+                            dimObj[p] = this.form[p]
+                        }
+                    } else {
+                        dimObj = {}
+                        for (let p in this.form) {
+                            dimObj[p] = this.form[p]
+                        }
+                        this.tableData.push(dimObj)
+                    }
+                    this.canvas.requestRenderAll();
+                    this.canvas.discardActiveObject()
+                    this.dialogVisible = false;
+                    // this.$refs.myForm.validate(valid => {
+                    //     if (valid) {
+                    //         console.log('Form submitted successfully.');
+                    //         this.dialogVisible = false;
+                    //     } else {
+                    //         console.log('Form validation failed.');
+                    //         return false;
+                    //     }
+                    // });
+                },
+                resetForm() {
+                    this.$refs.myForm.resetFields();
+                }
             }
             ,
-            // Add text to canvas
-            addText: function () {
-                let defaultText = 'A'
-                if (this.selectingText !== null) {
-                    defaultText = inference(this.selectingText.formData.dimId);
-                }
-                var text = new fabric.IText(defaultText, {
-                    fontFamily: 'Arial',
-                    fontSize: 25,
-                    left: 50,
-                    top: 50,
-                    fill: 'green',
-                    stroke: null,
-                    hasControls: true,
-                    hasBorders: true,
-                    selectable: true,
-                    zIndex:100
-                });
-                text.formData = {
-                    id:uuid++,
-                    dimId:text.text,
-                    tolerance:'±10%',
-                    designDim:'',
-                    actual:''
-                }
-                this.canvas.add(text);
-                text.on('editing:entered', (evt)=>{
-                    console.log('editing:entered', text)
-                    this.dialogVisible=true
-                    this.left = text.left-200
-                    this.top = text.top-200
-                    console.log('text.formData', text.formData)
-                    for (let prop in text.formData ) {
-                        this.form[prop] = text.formData[prop]
-                    }
-                    this.selectingText = text
-                })
-            },
-            // Add image
-            addImage: function () {
-                canPasteImage = !canPasteImage
-
-                //
-                // var that = this;
-                // var url = prompt('Enter image URL', '');
-                // if (url) {
-                //     fabric.Image.fromURL(url, function (img) {
-                //         img.set({
-                //             left: 50,
-                //             top: 50,
-                //             hasControls: true,
-                //             hasBorders: true,
-                //             selectable: true,
-                //         });
-                //         that.canvas.add(img);
-                //         that.addToUndoStack('add', img);
-                //     });
-                // }
-
-
-            }  ,
-            // Add line to canvas
-            addLine: function () {
-                var line = new fabric.Line([50, 50, 200, 200], {
-                    stroke: 'green',
-                    strokeWidth: 2,
-                    selectable: true,
-                    evented: true,
-                    hasControls: true,
-                    x1: 50,
-                    y1: 50,
-                    x2: 200,
-                    y2: 200,
-                    perPixelTargetFind: true,
-                    strokeLineCap: 'round'
-                });
-                this.canvas.add(line);
-                let circle1 = makeCircle(line.get('x1'), line.get('y1'), null, line)
-                let circle2 = makeCircle(line.get('x2'), line.get('y2'), line)
-                this.canvas.add(
-                    circle1,
-                    circle2,
-                )
-                // this.addToUndoStack('add', [line, circle1, circle2]);
-            },
-            submitForm() {
-                for(let p in this.form) {
-                    this.selectingText.formData[p] = this.form[p]
-                }
-                this.selectingText.text = this.form['dimId']
-                let dimObj = this.tableData.find( obj => obj.id === this.form['id'] )
-                if (dimObj) {
-                    for(let p in this.form) {
-                        dimObj[p] = this.form[p]
-                    }
-                } else {
-                    dimObj = {}
-                    for(let p in this.form) {
-                        dimObj[p] = this.form[p]
-                    }
-                    this.tableData.push(dimObj)
-                }
-                this.canvas.requestRenderAll();
-                this.canvas.discardActiveObject()
-                this.dialogVisible = false;
-                // this.$refs.myForm.validate(valid => {
-                //     if (valid) {
-                //         console.log('Form submitted successfully.');
-                //         this.dialogVisible = false;
-                //     } else {
-                //         console.log('Form validation failed.');
-                //         return false;
-                //     }
-                // });
-            },
-            resetForm() {
-                this.$refs.myForm.resetFields();
+            mounted: function () {
+                this.initCanvas();
             }
-        }
-        ,
-        mounted: function () {
-            this.initCanvas();
-        }
-        ,
-    })
-    ;
-</script>
+            ,
+        })
+            ;
+    </script>
 </body>
+
 </html>
